@@ -1,5 +1,8 @@
 module WebMVC.LevenShteinDistance
   ( levenShteinDistance
+  , levenShteinDistanceWith
+
+  , Operation(..)
   ) where
 
 import qualified Data.Array as Array
@@ -9,26 +12,43 @@ import Debug.Trace
 
 --------------------------------------------------------------------------------
 
-type Distance = Int
 
-data Operation = Insert { elemIx :: Int -- ^ insert old ! elemIx
-                        , at     :: Int -- ^ just before the element at newIndex
+data Operation = Insert { elemIx :: {-# UNPACK #-}!Int -- ^ insert old ! elemIx
+                        , at     :: {-# UNPACK #-}!Int -- ^ just before the element at newIndex
                         }
-               | Replace { at :: Int
-                         , by :: Int -- index
+               | Replace { at :: {-# UNPACK #-}!Int
+                         , by :: {-# UNPACK #-}!Int -- index
                          }
-               | Delete Int      -- ^ delete the element i
-
+               | Delete {-# UNPACK #-}!Int      -- ^ delete the element i
+               deriving (Show,Eq)
 
 -- | computes the levenShteinDistance
 levenShteinDistance         :: Eq a => [a] -> [a] -> Int
-levenShteinDistance []  new = length new
-levenShteinDistance old []  = length old
-levenShteinDistance old new = lev old' new' (length old', length new')
+levenShteinDistance old new = getDist $ levenShteinDistanceWith' old new
+
+-- | computes the levenShteinDistance, as well as the edits
+levenShteinDistanceWith         :: Eq a => [a] -> [a] -> (Int, [Operation])
+levenShteinDistanceWith old new = toTuple $ levenShteinDistanceWith' old new
+
+-- | Implementation of the levenShteinDistance
+levenShteinDistanceWith'         :: Eq a => [a] -> [a] -> Distance
+levenShteinDistanceWith' old new = lev old' new' (length old', length new')
   where
     old' = Array.listArray (0, length old - 1) old
     new' = Array.listArray (0, length new - 1) new
 
+data Distance = Dist { getDist    :: {-# UNPACK#-}!Int
+                     , _getDeltas :: [Operation]
+                     } deriving (Show)
+
+toTuple (Dist d ops) = (d,ops)
+
+instance Eq Distance where
+  (Dist d _) == (Dist d' _) = d == d
+instance Ord Distance where
+  (Dist d _) `compare` (Dist d' _) = d `compare` d'
+
+inc (Dist d xs) x = Dist (d+1) (x:xs)
 
 lev         :: Eq a => Array.Array Int a -> Array.Array Int a -> (Int,Int) -> Distance
 lev old new = lev'
@@ -36,15 +56,18 @@ lev old new = lev'
     -- the argument represents suffixes of lengths i and j of old and new respectively.
     lev' :: (Int,Int) -> Distance
     lev' = memo ((0,0),(n+1,m+1)) $ \case
-      (0,j)                              -> j
-      (i,0)                              -> i
+      (0,j)                              -> Dist j (Insert 0 <$> suffix m j)
+      (i,0)                              -> Dist i (Delete   <$> suffix n i)
       (i,j) | old ! (n-i) == new ! (m-j) -> lev' (i-1, j-1)
-            | otherwise                  -> 1 + minimum [ lev' (i-1, j-1) -- replace old ! i by new  ! j
-                                                        , lev' (i,   j-1) --
-                                                        , lev' (i-1, j)
-                                                        ]
+            | otherwise                  -> minimum
+                                            [ lev' (i-1, j-1) `inc` Replace (n-i) (m-j)
+                                            , lev' (i,   j-1) `inc` Insert  (n-i) (m-j)
+                                            , lev' (i-1, j)   `inc` Delete  (n-i)
+                                            ]
     n = length old
     m = length new
+
+suffix n l = [(n-l)..n-1]
 
 -- add memoization, see
 -- https://byorgey.wordpress.com/2023/06/06/dynamic-programming-in-haskell-automatic-memoization/
