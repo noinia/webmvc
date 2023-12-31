@@ -1,0 +1,95 @@
+cabal-version:      3.4
+name:               webmvc
+version:            0.1.0.0
+synopsis:           Web MVC framework
+-- description:
+license:            MIT
+license-file:       LICENSE
+author:             Frank Staals
+maintainer:         frank@fstaals.net
+-- copyright:
+category:           Web
+build-type:         Simple
+extra-doc-files:    changelog.org
+-- extra-source-files:
+data-dir: data
+data-files:
+
+
+tested-with: GHC == 9.6.1
+
+common setup
+    ghc-options: -Wall
+    default-language: GHC2021
+    build-depends:
+        base                      >= 4.18          && < 5
+      , containers                >= 0.6           && < 1
+      , text                      >= 2             && < 3
+      , bytestring                >= 0.11          && < 1
+      , lucid                     >= 2.8           && < 3
+      , lens                      >= 5.2           && < 6
+      , these                     >= 1.1           && < 2
+      , array                     >= 0.5           && < 1
+
+      -- , file-embed                >= 0.0.15        && < 0.1
+      -- , wai                       >= 3.0.3.0       && < 3.3
+      -- , websockets                >= 0.9.5.0       && < 0.13
+      -- , template-haskell          >= 2.10          && < 3
+      , warp                      >= 3.1.2         && < 3.4
+      , http-types                >= 0.12          && < 0.13
+
+-- wai-websockets >=3.0.0.6 && <3.1
+
+    default-extensions:
+        DataKinds
+      , TypeFamilies
+      , GADTs
+      , KindSignatures
+      , ScopedTypeVariables
+      , PatternSynonyms
+      , TupleSections
+      , LambdaCase
+      , DerivingVia
+      , ViewPatterns
+
+--------------------------------------------------------------------------------
+
+library
+    import:           setup
+    exposed-modules:
+        WebMVC
+        WebMVC.Types
+        WebMVC.Util
+        WebMVC.Diff
+        WebMVC.Html.Element
+        WebMVC.LevenShteinDistance
+    -- other-modules:
+
+    -- other-extensions:
+    hs-source-dirs:   src
+
+--------------------------------------------------------------------------------
+
+executable webmvc-devel
+  import:         setup
+  hs-source-dirs: webmvc-devel
+  main-is:        Main.hs
+  build-depends:
+        webmvc
+
+--------------------------------------------------------------------------------
+
+test-suite webmvc-test
+    import:           setup
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    other-modules:
+        Spec
+        LevSpec
+    build-tool-depends: hspec-discover:hspec-discover
+    build-depends:
+        webmvc
+      , hspec                           >= 2.9     && < 3
+      , QuickCheck                      >= 2.10    && < 3
+      , quickcheck-instances            >= 0.3     && < 1
