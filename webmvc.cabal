@@ -30,6 +30,7 @@ common setup
       , lens                      >= 5.2           && < 6
       , these                     >= 1.1           && < 2
       , array                     >= 0.5           && < 1
+      , deepseq                   >= 1.1           && < 2
 
       -- , file-embed                >= 0.0.15        && < 0.1
       -- , wai                       >= 3.0.3.0       && < 3.3

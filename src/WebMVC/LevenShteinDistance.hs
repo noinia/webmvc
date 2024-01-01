@@ -5,10 +5,10 @@ module WebMVC.LevenShteinDistance
   , Operation(..)
   ) where
 
-import qualified Data.Array as Array
+import           Control.DeepSeq
 import           Data.Array (Ix, Array, (!))
-
-import Debug.Trace
+import qualified Data.Array as Array
+import           GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 
@@ -20,15 +20,25 @@ data Operation = Insert { elemIx :: {-# UNPACK #-}!Int -- ^ insert old ! elemIx
                          , by :: {-# UNPACK #-}!Int -- index
                          }
                | Delete {-# UNPACK #-}!Int      -- ^ delete the element i
-               deriving (Show,Eq)
+               deriving (Show,Eq,Generic)
+
+instance NFData Operation
 
 -- | computes the levenShteinDistance
+--
+-- \(O(nm)\)
 levenShteinDistance         :: Eq a => [a] -> [a] -> Int
 levenShteinDistance old new = getDist $ levenShteinDistanceWith' old new
 
--- | computes the levenShteinDistance, as well as the edits
+-- | computes the levenShteinDistance, as well as the edits. Note that the list of edits
+-- is forced, so using 'levenShteinDistance' may be slightly more efficient.
+--
+--
+-- \(O(nm)\)
 levenShteinDistanceWith         :: Eq a => [a] -> [a] -> (Int, [Operation])
-levenShteinDistanceWith old new = toTuple $ levenShteinDistanceWith' old new
+levenShteinDistanceWith old new = force . toTuple $ levenShteinDistanceWith' old new
+  -- we force the result so that we don't leak the entire DP table.
+
 
 -- | Implementation of the levenShteinDistance
 levenShteinDistanceWith'         :: Eq a => [a] -> [a] -> Distance
@@ -41,13 +51,15 @@ data Distance = Dist { getDist    :: {-# UNPACK#-}!Int
                      , _getDeltas :: [Operation]
                      } deriving (Show)
 
+toTuple              :: Distance -> (Int,[Operation])
 toTuple (Dist d ops) = (d,ops)
 
 instance Eq Distance where
-  (Dist d _) == (Dist d' _) = d == d
+  (Dist d _) == (Dist d' _) = d == d'
 instance Ord Distance where
   (Dist d _) `compare` (Dist d' _) = d `compare` d'
 
+inc :: Distance -> Operation -> Distance
 inc (Dist d xs) x = Dist (d+1) (x:xs)
 
 lev         :: Eq a => Array.Array Int a -> Array.Array Int a -> (Int,Int) -> Distance
@@ -67,6 +79,7 @@ lev old new = lev'
     n = length old
     m = length new
 
+suffix     :: Int -> Int -> [Int]
 suffix n l = [(n-l)..n-1]
 
 -- add memoization, see
